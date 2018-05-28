@@ -78,8 +78,68 @@ function processBtn_Callback(hObject, eventdata, handles)
 % hObject    handle to processBtn (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+global img;
 
+level = graythresh(img);
+img_bin = rgb2gray(img);
+img_bin = imbinarize(img_bin, level);
+axes(handles.axes4);
+imshow(img_bin);
 
+se = strel('diamond',3);
+img_er = imerode(img_bin,se);
+axes(handles.axes5);
+imshow(img_er);
+
+img_er = bwmorph(img_er,'erode',1.5);
+axes(handles.axes6);
+imshow(img_er);
+
+BWr = regionprops(img_er, 'BoundingBox', 'Area', 'Image');
+axes(handles.axes7);
+imshow(img_er);
+hold on;
+pixelH = [];
+pixelW = [];
+for i=1:size(BWr,1)
+    rectangle('Position', BWr(i).BoundingBox,'edgecolor','red');
+%    pixelT = pixelT + BWr(i).Area;
+    pixelH(1,i) = BWr(i).Area;
+end
+
+cc = bwconncomp(img_er);
+num = cc.NumObjects;
+
+arr = sort(pixelH, 'descend');
+arrMaxP = arr(1,num);
+[c_max, idx_max] = max(arrMaxP);
+T = 1500;
+removeMask = [BWr.Area]>T; 
+BWremove2 = img_er;
+BWremove2(cat(1, cc.PixelIdxList{removeMask})) = false;
+BWremove2 = bwmorph(BWremove2, 'open', Inf);
+axes(handles.axes8);
+imshow(BWremove2);
+cc_rem = bwconncomp(BWremove2);
+num_canc = cc_rem.NumObjects;
+
+cancer = regionprops(BWremove2,'BoundingBox','Area'); 
+% imshow(img);title('Detected Cancer')
+
+axes(handles.axes3);
+imshow(img);
+hold on ;
+for cancers=1:size(cancer,1)
+    size(cancer);
+    rectangle('Position', cancer(cancers).BoundingBox,'edgecolor','red');
+end
+
+if (num_canc > 0)
+%     fprintf('This lung have cancer (abnormal)');
+    set(handles.diagnoseTxt, 'String', 'This lung have cancer (abnormal)');
+else
+    set(handles.diagnoseTxt, 'String', 'This lung is normal');
+end
 
 % --- Executes on button press in browseBtn.
 function browseBtn_Callback(hObject, eventdata, handles)
@@ -93,14 +153,13 @@ if ~isequal (nama_file,0)
     guidata(hObject,handles);
     axes(handles.axes1);
     imshow(img);
-    
-    null = sprintf(' ');
-    set(handles.st2, 'String', null);
-    set(handles.st3, 'String', null);
-    set(handles.st4, 'String', null);
-    cla(handles.pb2);
-    cla(handles.pb3);
-    cla(handles.pb4);
+
+    cla(handles.axes3);
+    cla(handles.axes4);
+    cla(handles.axes5);
+    cla(handles.axes6);
+    cla(handles.axes7);
+    cla(handles.axes8);
 else
     return;
 end
